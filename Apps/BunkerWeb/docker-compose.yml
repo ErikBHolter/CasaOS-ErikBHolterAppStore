@@ -1,0 +1,107 @@
+
+x-casaos:
+  architectures:
+    - amd64
+  author: Chatin
+  category: Network
+  description:
+    en_us: Web application firewall (WAF) and reverse proxy
+    en_us: Preparation
+    en_us: mkdir /DATA/AppData/bunkerweb/bw-storage /DATA/AppData/bunkerweb/bw-ssl
+    en_us: chmod systemd-network:systemd-journal /DATA/AppData/bunkerweb/bw-storage
+    en_us: copy certificates to /DATA/AppData/bunkerweb/bw-ssl
+  hostname: ""
+  icon: https://github.com/chaitin/SafeLine/blob/main/images/banner.png
+  index: /
+  is_uncontrolled: false
+  port_map: "443"
+  scheme: https
+  title:
+    en_us: BunkerWeb
+    custom: BunkerWeb
+
+# Preparation:
+# mkdir /DATA/AppData/bunkerweb/bw-storage /DATA/AppData/bunkerweb/bw-ssl
+# chmod systemd-network:systemd-journal /DATA/AppData/bunkerweb/bw-storage
+# copy certificates to /DATA/AppData/bunkerweb/bw-ssl
+
+name: bunkerweb
+services:
+  bunkerweb:
+    # This is the name that will be used to identify the instance in the Scheduler
+    image: bunkerity/bunkerweb:1.6.1
+    ports:
+      - "81:8080/tcp"
+      - "443:8443/tcp"
+      - "443:8443/udp" # For QUIC / HTTP3 support
+    environment:
+      API_WHITELIST_IP: "127.0.0.0/8 10.20.30.0/24 10.0.0.0/16" # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
+      DATABASE_URI: "mariadb+pymysql://bunkerweb:changeme@bw-db:3306/db" # Remember to set a stronger password for the database
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-services
+
+  bw-scheduler:
+    image: bunkerity/bunkerweb-scheduler:1.6.1
+    environment:
+      API_WHITELIST_IP: "127.0.0.0/8 10.20.30.0/24 10.0.0.0/16" # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
+      DATABASE_URI: "mariadb+pymysql://bunkerweb:changeme@bw-db:3306/db" # Remember to set a stronger password for the database
+      BUNKERWEB_INSTANCES: "bunkerweb" # Make sure to set the correct instance name
+      SERVER_NAME: ""
+      MULTISITE: "yes"
+      UI_HOST: "http://bw-ui:7000" # Change it if needed
+    volumes:
+      - type: bind # bw-storage
+        source: /DATA/AppData/bunkerweb/bw-storage
+        target: /data
+        bind:
+          create_host_path: true
+      - type: bind # bw-ssl
+        source: /DATA/AppData/bunkerweb/bw-ssl
+        target: /ssl
+        bind:
+          create_host_path: true
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-db
+
+  bw-ui:
+    image: bunkerity/bunkerweb-ui:1.6.1
+    environment:
+      API_WHITELIST_IP: "127.0.0.0/8 10.20.30.0/24" # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
+      DATABASE_URI: "mariadb+pymysql://bunkerweb:changeme@bw-db:3306/db" # Remember to set a stronger password for the database
+    restart: "unless-stopped"
+    networks:
+      - bw-universe
+      - bw-db
+
+  bw-db:
+    image: mariadb:11
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: "db"
+      MYSQL_USER: "bunkerweb"
+      MYSQL_PASSWORD: "changeme" # Remember to set a stronger password for the database
+    volumes:
+      - type: bind # bw-data
+        source: /DATA/AppData/bunkerweb/bw-data
+        target: /var/lib/mysql
+        bind:
+          create_host_path: true    
+    restart: "unless-stopped"
+    networks:
+      - bw-db
+
+networks:
+  bw-universe:
+    name: bw-universe
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.20.30.0/24 # Make sure to set the correct IP range so the scheduler can send the configuration to the instance
+  bw-services:
+    name: bw-services
+  bw-db:
+    name: bw-db
