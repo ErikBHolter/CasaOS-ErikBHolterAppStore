@@ -2,23 +2,14 @@
 x-casaos:
   architectures:
     - amd64
-  author: Chatin
+  author: N/A
   category: Network
   description:
     en_us: Web application firewall (WAF) and reverse proxy
-    en_us: Preparation
-    en_us: mkdir /DATA/AppData/bunkerweb/bw-storage /DATA/AppData/bunkerweb/bw-ssl
-    en_us: chmod systemd-network:systemd-journal /DATA/AppData/bunkerweb/bw-storage
-    en_us: copy certificates to /DATA/AppData/bunkerweb/bw-ssl
-  hostname: ""
-  icon: https://github.com/chaitin/SafeLine/blob/main/images/banner.png
-  index: /
-  is_uncontrolled: false
   port_map: "443"
   scheme: https
   title:
     en_us: BunkerWeb
-    custom: BunkerWeb
 
 # Preparation:
 # mkdir /DATA/AppData/bunkerweb/bw-storage /DATA/AppData/bunkerweb/bw-ssl
